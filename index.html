@@ -307,23 +307,25 @@
       color: var(--gold-primary);
     }
 
-    .model-select {
+    .status-badge {
       background: rgba(20, 18, 12, 0.8);
       color: var(--gold-light);
       border: 1px solid var(--border-gold);
-      padding: 0.4rem 0.6rem;
+      padding: 0.4rem 0.8rem;
       border-radius: 10px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.75rem;
-      outline: none;
-      max-width: 130px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
-    @media (min-width: 480px) {
-      .model-select {
-        max-width: none;
-        padding: 0.4rem 1rem;
-      }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
     }
 
     .chat-section {
@@ -535,9 +537,10 @@
             </div>
           </div>
         </div>
-        <select class="model-select" id="model-select">
-          <option value="">CONNECTING...</option>
-        </select>
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span>ONLINE</span>
+        </div>
       </header>
 
       <div class="chat-section">
@@ -614,7 +617,7 @@
     /* =========================================================
        4. CONVERSATION HISTORY & LOCAL STORAGE
        ========================================================= */
-    const OLLAMA_HOST = 'http://localhost:11434';
+    const API_ENDPOINT = '/api/chat';
     const SYSTEM_PROMPT = {
       role: 'system',
       content: 'Your name is Tephdy, an AI agent on the Tephdy AI platform by TEPHDY TECH. Be helpful, precise, concise, and smart.'
@@ -623,7 +626,6 @@
     const chatBox = document.getElementById('chat-box');
     const promptInput = document.getElementById('prompt-input');
     const sendBtn = document.getElementById('send-btn');
-    const modelSelect = document.getElementById('model-select');
     const historyListEl = document.getElementById('history-list');
     const newChatBtn = document.getElementById('new-chat-btn');
 
@@ -745,26 +747,6 @@
       }, 20);
     }
 
-    async function loadModels() {
-      try {
-        const res = await fetch(`${OLLAMA_HOST}/api/tags`);
-        const data = await res.json();
-        modelSelect.innerHTML = '';
-        if (data.models && data.models.length > 0) {
-          data.models.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.name;
-            opt.textContent = m.name.toUpperCase();
-            modelSelect.appendChild(opt);
-          });
-        } else {
-          modelSelect.innerHTML = '<option value="">NO MODELS</option>';
-        }
-      } catch (err) {
-        modelSelect.innerHTML = '<option value="">OFFLINE</option>';
-      }
-    }
-
     function appendMessage(role, text) {
       const msgDiv = document.createElement('div');
       msgDiv.classList.add('message', role);
@@ -796,8 +778,7 @@
 
     async function sendMessage() {
       const prompt = promptInput.value.trim();
-      const selectedModel = modelSelect.value;
-      if (!prompt || !selectedModel) return;
+      if (!prompt) return;
 
       promptInput.value = '';
       promptInput.style.height = '24px';
@@ -818,57 +799,27 @@
       isThinking = true;
       const prepBubble = showPreparingNotice();
 
-      const recentHistory = [SYSTEM_PROMPT, ...activeSession.messages.filter(m => m.role !== 'system').slice(-6)];
+      const payloadMessages = activeSession.messages
+        .filter(m => m.role !== 'system')
+        .slice(-6);
 
       try {
-        const response = await fetch(`${OLLAMA_HOST}/api/chat`, {
+        const response = await fetch(API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            model: selectedModel, 
-            messages: recentHistory, 
-            stream: true,
-            options: { num_ctx: 2048, num_predict: 512, temperature: 0.7 }
-          })
+          body: JSON.stringify({ messages: payloadMessages })
         });
 
         if (!response.ok) throw new Error('Network response was not ok');
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullMessage = '';
-        let isFirstToken = true;
+        const data = await response.json();
+        const replyText = data.response || data.error || "No response received.";
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
-          
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              const parsed = JSON.parse(line);
-              if (parsed.message?.content) {
-                if (isFirstToken) {
-                  prepBubble.innerHTML = '';
-                  isThinking = false;
-                  isFirstToken = false;
-                }
-                fullMessage += parsed.message.content;
-                prepBubble.innerHTML = marked.parse(fullMessage);
-                chatBox.scrollTop = chatBox.scrollHeight;
-              }
-            } catch (e) {}
-          }
-        }
-        
-        if (!fullMessage) {
-          prepBubble.textContent = "Received empty response from model.";
-        } else {
-          activeSession.messages.push({ role: 'assistant', content: fullMessage });
-          saveSessions();
-        }
+        prepBubble.innerHTML = marked.parse(replyText);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        activeSession.messages.push({ role: 'assistant', content: replyText });
+        saveSessions();
       } catch (e) {
         prepBubble.textContent = "Tephdy engine offline or disconnected.";
       } finally {
@@ -888,7 +839,6 @@
     });
 
     window.addEventListener('load', () => {
-      loadModels();
       if (sessions.length === 0) {
         createNewSession();
       } else {
