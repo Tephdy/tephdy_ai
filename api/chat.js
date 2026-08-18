@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: 'llama-3.1-8b-instant', // Active model identifier
+      model: 'llama-3.3-70b-versatile',
     });
 
     return res.status(200).json({
