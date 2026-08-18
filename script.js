@@ -205,11 +205,7 @@
     /* =========================================================
        6. CONVERSATION HISTORY & LOCAL STORAGE
        ========================================================= */
-    // Change from relative path:
-    // const API_ENDPOINT = '/api/chat';
-
-    // To your full Vercel deployment URL:
-    const API_ENDPOINT = 'https://tephdy-ai.vercel.app/api/chat'; // Replace with your actual Vercel domain
+    const API_ENDPOINT = '/api/chat';
     const SYSTEM_PROMPT = {
       role: 'system',
       content: 'Your name is Tephdy, an AI agent on the Tephdy AI platform by TEPHDY TECH. Be helpful, precise, concise, and smart.'
