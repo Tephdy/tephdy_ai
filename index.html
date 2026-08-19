@@ -1122,54 +1122,68 @@
     }
 
     async function sendMessage() {
-      const prompt = promptInput.value.trim();
-      if (!prompt) return;
+      const text = promptInput.value.trim();
+      if (!text || sendBtn.disabled) return;
+
+      const session = sessions.find(s => s.id === currentSessionId);
+      if (!session) return;
+
+      appendMessage('user', text);
+      session.messages.push({ role: 'user', content: text });
+
+      if (session.title === 'New Conversation') {
+        session.title = text.slice(0, 28) + (text.length > 28 ? '...' : '');
+        renderHistoryList();
+      }
 
       promptInput.value = '';
       promptInput.style.height = '24px';
       sendBtn.disabled = true;
-
-      const activeSession = sessions.find(s => s.id === currentSessionId);
-      if (!activeSession) return;
-
-      if (activeSession.messages.length <= 1) {
-        activeSession.title = prompt.length > 18 ? prompt.slice(0, 18) + '...' : prompt;
-        renderHistoryList();
-      }
-
-      appendMessage('user', prompt);
-      activeSession.messages.push({ role: 'user', content: prompt });
-      saveSessions();
-
       isThinking = true;
-      const prepBubble = showPreparingNotice();
 
-      const payloadMessages = activeSession.messages
-        .filter(m => m.role !== 'system')
-        .slice(-6);
+      const thinkingNotice = showPreparingNotice();
 
       try {
         const response = await fetch(API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: payloadMessages })
+          body: JSON.stringify({ messages: session.messages })
         });
 
-        if (!response.ok) throw new Error('Network response was not ok');
+        if (!response.ok) throw new Error('API server error');
 
-        const data = await response.json();
-        const replyText = data.response || data.error || "No response received.";
+        thinkingNotice.remove();
+        const assistantMsgDiv = appendMessage('assistant', '');
 
-        prepBubble.innerHTML = marked.parse(replyText);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        if (response.body && typeof response.body.getReader === 'function') {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let partialText = '';
 
-        activeSession.messages.push({ role: 'assistant', content: replyText });
-        saveSessions();
-      } catch (e) {
-        prepBubble.textContent = "Tephdy engine offline or disconnected.";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            partialText += decoder.decode(value, { stream: true });
+            assistantMsgDiv.innerHTML = marked.parse(partialText);
+            chatBox.scrollTop = chatBox.scrollHeight;
+          }
+
+          session.messages.push({ role: 'assistant', content: partialText });
+        } else {
+          const data = await response.json();
+          const reply = data.message || data.choices?.[0]?.message?.content || 'No response generated.';
+          assistantMsgDiv.innerHTML = marked.parse(reply);
+          session.messages.push({ role: 'assistant', content: reply });
+        }
+      } catch (err) {
+        thinkingNotice.remove();
+        const errorText = 'Sorry, an error occurred while connecting to the server. Please try again.';
+        appendMessage('assistant', errorText);
+        session.messages.push({ role: 'assistant', content: errorText });
       } finally {
         sendBtn.disabled = false;
         isThinking = false;
+        saveSessions();
       }
     }
 
