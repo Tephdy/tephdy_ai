@@ -689,3 +689,80 @@ textarea {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* =========================================================
+   MOBILE MARKDOWN & TABLE RESPONSIVENESS FIXES
+   ========================================================= */
+
+/* 1. Prevent Table Squeezing with Touch Scrolling */
+.message table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: normal;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.message th, 
+.message td {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  min-width: 120px; /* Forces minimum width so text doesn't crush vertically */
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.message th {
+  background: rgba(212, 175, 55, 0.18);
+  color: var(--gold-light);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.message td {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* 2. Responsive Heading Sizes on Mobile */
+.message h1 { 
+  font-size: 1.15rem; 
+  font-weight: 700; 
+  margin: 0.8rem 0 0.4rem; 
+  line-height: 1.35; 
+  color: var(--gold-light);
+}
+
+.message h2 { 
+  font-size: 1.05rem; 
+  font-weight: 700; 
+  margin: 0.7rem 0 0.35rem; 
+  line-height: 1.35; 
+}
+
+.message h3 { 
+  font-size: 0.95rem; 
+  font-weight: 600; 
+  margin: 0.6rem 0 0.3rem; 
+}
+
+/* 3. Auto-Wrap Long URLs */
+.message a {
+  color: #60a5fa;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+}
+
+/* 4. Compact Message Padding for Mobile Containers */
+@media (max-width: 767px) {
+  .message.assistant {
+    padding: 0.75rem 0.85rem;
+  }
+}
