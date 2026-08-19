@@ -140,6 +140,7 @@
     /* Custom Scrollbars */
     ::-webkit-scrollbar {
       width: 4px;
+      height: 4px;
     }
     ::-webkit-scrollbar-track {
       background: transparent;
@@ -250,7 +251,7 @@
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      min-height: 48px; /* Mobile Touch Target Standard */
+      min-height: 48px;
       transition: all 0.2s ease;
     }
 
@@ -532,7 +533,7 @@
     }
 
     .message p {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.55rem;
     }
 
     .message p:last-child {
@@ -541,29 +542,11 @@
 
     .message ul, .message ol {
       margin-left: 1.1rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.55rem;
     }
 
-    .message pre {
-      background: #18181b;
-      padding: 0.75rem;
-      border-radius: 10px;
-      overflow-x: auto;
-      margin: 0.5rem 0;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .message code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-    }
-
-    .message :not(pre) > code {
-      background: rgba(255, 255, 255, 0.12);
-      padding: 2px 5px;
-      border-radius: 4px;
-      color: var(--gold-light);
+    .message li {
+      margin-bottom: 0.25rem;
     }
 
     @keyframes fadeIn {
@@ -585,6 +568,104 @@
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-bottom-left-radius: 4px;
       color: var(--text-white);
+    }
+
+    /* Code Block Formatting & Headers */
+    .code-block-container {
+      margin: 10px 0;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0d1117;
+      border: 1px solid var(--border-gold);
+    }
+
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-transform: lowercase;
+    }
+
+    .copy-code-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .copy-code-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-white);
+    }
+
+    .copy-code-btn.copied {
+      color: #22c55e;
+    }
+
+    .code-scroll-wrapper {
+      overflow-x: auto;
+      max-width: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .code-scroll-wrapper pre {
+      margin: 0;
+      padding: 12px 14px;
+      background: transparent;
+      border: none;
+    }
+
+    .message code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    .message :not(pre) > code {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--gold-light);
+    }
+
+    /* Responsive Markdown Tables */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid var(--border-gold);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .table-responsive table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .table-responsive th, 
+    .table-responsive td {
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .table-responsive th {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--gold-light);
     }
 
     .typing-cursor {
@@ -660,8 +741,7 @@
       height: 24px;
       max-height: 120px;
       font-family: inherit;
-      /* Font size set to 16px to prevent iOS Safari auto-zoom on field focus */
-      font-size: 16px;
+      font-size: 16px; /* Prevents auto-zoom on iOS Safari */
       line-height: 1.4;
     }
 
@@ -809,7 +889,6 @@
 
     function initParticles() {
       particles = [];
-      // Lower particle multiplier for mobile GPU efficiency
       const isMobile = window.innerWidth < 768;
       const divisor = isMobile ? 22000 : 12000;
       const particleCount = Math.floor((window.innerWidth * window.innerHeight) / divisor);
@@ -854,13 +933,60 @@
        2. MARKDOWN & SYNTAX HIGHLIGHTING CONFIGURATION
        ========================================================= */
     const renderer = new marked.Renderer();
+
     renderer.code = function(code, language) {
-      const validLang = language && hljs.getLanguage(language) ? language : 'plaintext';
-      const highlighted = hljs.highlight(code, { language: validLang }).value;
-      return `<pre><code class="hljs ${validLang}">${highlighted}</code></pre>`;
+      const validLang = (typeof hljs !== 'undefined' && language && hljs.getLanguage(language)) 
+        ? language 
+        : 'code';
+      const highlighted = (typeof hljs !== 'undefined' && hljs.getLanguage(validLang)) 
+        ? hljs.highlight(code, { language: validLang }).value 
+        : code;
+
+      return `
+        <div class="code-block-container">
+          <div class="code-block-header">
+            <span class="code-lang">${validLang}</span>
+            <button class="copy-code-btn" onclick="copyCodeToClipboard(this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span>Copy</span>
+            </button>
+          </div>
+          <div class="code-scroll-wrapper">
+            <pre><code class="hljs ${validLang}">${highlighted}</code></pre>
+          </div>
+        </div>
+      `;
+    };
+
+    renderer.table = function(header, body) {
+      return `
+        <div class="table-responsive">
+          <table>
+            <thead>${header}</thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      `;
     };
 
     marked.use({ renderer, breaks: true });
+
+    window.copyCodeToClipboard = function(button) {
+      const container = button.closest('.code-block-container');
+      const code = container.querySelector('code').innerText;
+
+      navigator.clipboard.writeText(code).then(() => {
+        const label = button.querySelector('span');
+        button.classList.add('copied');
+        label.textContent = 'Copied!';
+        setTimeout(() => {
+          button.classList.remove('copied');
+          label.textContent = 'Copy';
+        }, 2000);
+      }).catch(() => {
+        button.querySelector('span').textContent = 'Failed';
+      });
+    };
 
     /* =========================================================
        3. 3D GOLD ICON
@@ -938,8 +1064,14 @@
       applyTheme(e.target.value);
     });
 
+    const savedTheme = localStorage.getItem('tephdy_theme');
+    if (savedTheme) {
+      themeSelect.value = savedTheme;
+      applyTheme(savedTheme);
+    }
+
     /* =========================================================
-       5. MOBILE DRAWER NAVIGATION & TOUCH GESTURES
+       5. MOBILE DRAWER NAVIGATION
        ========================================================= */
     const menuBtn = document.getElementById('menu-btn');
     const sidebar = document.getElementById('sidebar');
@@ -1067,6 +1199,16 @@
       promptInput.style.height = Math.min(promptInput.scrollHeight, 120) + 'px';
     });
 
+    promptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+    newChatBtn.addEventListener('click', createNewSession);
+
     function playAnimatedGreeting(text) {
       const msgDiv = document.createElement('div');
       msgDiv.classList.add('message', 'assistant');
@@ -1158,43 +1300,30 @@
         if (!response.ok) throw new Error('Network response was not ok');
 
         const data = await response.json();
-        const replyText = data.response || data.error || "No response received.";
+        const assistantReply = data.response || 'No response returned.';
 
-        prepBubble.innerHTML = marked.parse(replyText);
-        chatBox.scrollTop = chatBox.scrollHeight;
-
-        activeSession.messages.push({ role: 'assistant', content: replyText });
+        prepBubble.remove();
+        appendMessage('assistant', assistantReply);
+        activeSession.messages.push({ role: 'assistant', content: assistantReply });
         saveSessions();
-      } catch (e) {
-        prepBubble.textContent = "Tephdy engine offline or disconnected.";
+      } catch (err) {
+        console.error(err);
+        prepBubble.remove();
+        appendMessage('assistant', 'Sorry, I encountered an issue reaching the server. Please try again.');
       } finally {
-        sendBtn.disabled = false;
         isThinking = false;
+        sendBtn.disabled = false;
       }
     }
 
-    sendBtn.addEventListener('click', sendMessage);
-    newChatBtn.addEventListener('click', createNewSession);
-    promptInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    window.addEventListener('load', () => {
-      const savedTheme = localStorage.getItem('tephdy_theme') || 'gold';
-      themeSelect.value = savedTheme;
-      applyTheme(savedTheme);
-
-      if (sessions.length === 0) {
-        createNewSession();
-      } else {
-        currentSessionId = sessions[0].id;
-        renderHistoryList();
-        loadSessionMessages(currentSessionId);
-      }
-    });
+    // Initialize session state on load
+    if (sessions.length === 0) {
+      createNewSession();
+    } else {
+      currentSessionId = sessions[0].id;
+      renderHistoryList();
+      loadSessionMessages(currentSessionId, false);
+    }
   </script>
 </body>
 </html>
