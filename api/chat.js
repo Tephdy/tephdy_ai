@@ -7,7 +7,7 @@ const groq = new Groq({
 export default async function handler(req, res) {
   // 1. Enable CORS for GitHub Pages and local development
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow cross-domain requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
@@ -19,20 +19,29 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // 3. Reject non-POST requests
+  // 3. Graceful check for GET requests (prevents 405 warnings in logs)
+  if (req.method === 'GET') {
+    return res.status(200).json({ status: 'Tephdy AI API is online. Send a POST request to query.' });
+  }
+
+  // 4. Reject other unsupported HTTP methods
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { messages = [] } = req.body;
+    const { messages = [] } = req.body || {};
 
-    // 4. Sanitize messages to avoid unexpected roles from client
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Invalid payload format: messages must be an array.' });
+    }
+
+    // 5. Sanitize messages to avoid unexpected roles from client
     const cleanedMessages = messages
-      .filter(m => m.role === 'user' || m.role === 'assistant')
-      .map(m => ({ role: m.role, content: m.content }));
+      .filter(m => m && (m.role === 'user' || m.role === 'assistant'))
+      .map(m => ({ role: m.role, content: String(m.content || '') }));
 
-    // 5. Prepend system prompt on the server side
+    // 6. Prepend system prompt on the server side
     const fullMessages = [
       {
         role: 'system',
@@ -44,8 +53,9 @@ export default async function handler(req, res) {
 
     const completion = await groq.chat.completions.create({
       messages: fullMessages,
-      model: 'llama-3.3-70b-versatile', // Recommended active Groq production model ID
+      model: 'llama-3.3-70b-versatile',
       temperature: 0.2,
+      max_tokens: 2048,
     });
 
     return res.status(200).json({
